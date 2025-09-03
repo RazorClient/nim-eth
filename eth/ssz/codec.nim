@@ -1,4 +1,4 @@
-import ".."/common/[addresses, hashes, base]
+import ../common/[addresses, hashes, base]
 import ../rlp
 import ssz_serialization
 import json_serialization

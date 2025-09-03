@@ -1,8 +1,8 @@
 import std/[strutils, sequtils, options]
 import stint
 import ssz_serialization
-import ".."/common/[addresses, base, hashes]
-import "."/[transaction_ssz, signatures]
+import ../common/[addresses, base, hashes,transactions,]
+import ./[transaction_ssz, signatures]
 # - rlpFromBytes/read() from your RLP lib
 # - Rlp* transaction record types from your RLP transaction module
 

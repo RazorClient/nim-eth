@@ -1,6 +1,6 @@
 import
   unittest2,
-  ssz_serialization,
+  ssz_serialization/merkleization,
   macros,
   std/sequtils,
   ../../eth/common/[addresses, base, hashes],
@@ -255,42 +255,42 @@ suite "Receipts Construction (SSZ)":
 # #
 # #
 
-# suite "Block receipts root (SSZ)":
-#   test "receipts root for 3 receipts: non-zero and stable":
+suite "Block receipts root (SSZ)":
+  test "receipts root for 3 receipts: non-zero and stable":
 
-#     let r0 = BasicReceipt(
-#       `from`: addresses.zeroAddress,
-#       gas_used: 21_000'u64,
-#       contract_address: addresses.zeroAddress,
-#       logs: @[],
-#       status: true
-#     )
-#     let r1 = CreateReceipt(
-#       `from`: address"0x0000000000000000000000000000000000000001",
-#       gas_used: 42_000'u64,
-#       contract_address: address"0x00000000000000000000000000000000000000aa",
-#       logs: @[],
-#       status: false
-#     )
-#     let r2 = SetCodeReceipt(
-#       `from`: address"0x00000000000000000000000000000000000000bb",
-#       gas_used: 63_000'u64,
-#       contract_address: address"0x00000000000000000000000000000000000000cc",
-#       logs: @[],
-#       status: true,
-#       authorities: @[address"0x00000000000000000000000000000000000000f1"]
-#     )
+    let r0 = BasicReceipt(
+      `from`: addresses.zeroAddress,
+      gas_used: 21_000'u64,
+      contract_address: addresses.zeroAddress,
+      logs: @[],
+      status: true
+    )
+    let r1 = CreateReceipt(
+      `from`: address"0x0000000000000000000000000000000000000001",
+      gas_used: 42_000'u64,
+      contract_address: address"0x00000000000000000000000000000000000000aa",
+      logs: @[],
+      status: false
+    )
+    let r2 = SetCodeReceipt(
+      `from`: address"0x00000000000000000000000000000000000000bb",
+      gas_used: 63_000'u64,
+      contract_address: address"0x00000000000000000000000000000000000000cc",
+      logs: @[],
+      status: true,
+      authorities: @[address"0x00000000000000000000000000000000000000f1"]
+    )
 
-#     var receipts = @[
-#       asTagged(r0),
-#       asTagged(r1),
-#       asTagged(r2)
-#     ]
+    var receipts = @[
+      asTagged(r0),
+      asTagged(r1),
+      asTagged(r2)
+    ]
 
 
-#     let root1 = hash_tree_root(receipts)
-#     check root1 != hashes.zeroHash32
-  #   echo "receipts_root: ", root1.to0xHex()
+    let root1 = hash_tree_root(receipts)
+    check root1 != hashes.zeroHash32
+    echo "receipts_root: ", root1.to0xHex()
 
   #   # Roundtrip the list and ensure the root is stable
   #   let enc = SSZ.encode(receipts)

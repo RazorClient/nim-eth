@@ -1,4 +1,4 @@
-import ssz_serialization, ".."/common/[addresses, base, hashes] # "."/codec
+import ssz_serialization, ../common/[addresses, base, hashes] # "."/codec
 
 const MAX_TOPICS_PER_LOG* = 4
 

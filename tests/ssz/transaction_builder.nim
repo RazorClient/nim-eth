@@ -11,8 +11,7 @@ const
   storageKey = default(Bytes32)
   abcdef = hexToSeqByte("abcdef")
 
-let accesses: seq[AccessTuple] =
-  @[AccessTuple(address: source, storageKeys: @[Hash32(storageKey)])]
+let accesses: seq[AccessTuple] = @[AccessTuple(address: source, storageKeys: @[Hash32(storageKey)])]
 
 proc dummySig(): Secp256k1ExecutionSignature =
   secp256k1_pack(1.u256, 1.u256, 0'u8)

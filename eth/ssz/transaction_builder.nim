@@ -1,6 +1,8 @@
-import stint, ./transaction_ssz, ."/signatures, ".."/common/[addresses, base, hashes]
-
-# Builder helpers and validation for RLP transactions -> outer Transaction
+import
+  stint,
+  ./transaction_ssz,
+  ./signatures,
+  ../common/[addresses, base, hashes]
 
 type TxBuildError* = object of ValueError
 

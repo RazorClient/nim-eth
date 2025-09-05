@@ -2,7 +2,7 @@ import
   unittest2,
   stew/byteutils,
   stint,
-  ../../eth/ssz/[transaction_ssz, transaction_builder, utils],
+  ../../eth/ssz/[transaction_ssz, transaction_builder, signatures],
   ../../eth/common/[addresses, base, hashes]
 
 const

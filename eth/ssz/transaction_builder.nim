@@ -83,7 +83,6 @@ template fail(msg: string): untyped =
 #   if p.input.len == 0:
 #     fail("legacy create: initcode (input) must be non-empty")
 
-
 # proc validate*(sig: Secp256k1ExecutionSignature) =
 #   if not secp256k1Validate(sig):
 #     fail("invalid secp256k1 signature")
@@ -102,7 +101,6 @@ template BuildWrap(
     Transaction(
       kind: RlpTransaction, rlp: RlpTransactionObject(kind: tag, fieldSym: inner)
     )
-
 
 # Register builds for all RLP variants
 BuildWrap(
@@ -125,9 +123,14 @@ BuildWrap(RlpBasicTransactionPayload, RlpBasicTransaction, txBasic, basic)
 BuildWrap(RlpCreateTransactionPayload, RlpCreateTransaction, txCreate, create)
 BuildWrap(RlpBlobTransactionPayload, RlpBlobTransaction, txBlob, blob)
 BuildWrap(RlpSetCodeTransactionPayload, RlpSetCodeTransaction, txSetCode, setCode)
-BuildWrap(RlpLegacyReplayableBasicTransactionPayload,  RlpLegacyReplayableBasicTransaction,  txLegacyReplayableBasic,  legacyReplayableBasic)
-BuildWrap(RlpLegacyReplayableCreateTransactionPayload, RlpLegacyReplayableCreateTransaction, txLegacyReplayableCreate, legacyReplayableCreate)
-
+BuildWrap(
+  RlpLegacyReplayableBasicTransactionPayload, RlpLegacyReplayableBasicTransaction,
+  txLegacyReplayableBasic, legacyReplayableBasic,
+)
+BuildWrap(
+  RlpLegacyReplayableCreateTransactionPayload, RlpLegacyReplayableCreateTransaction,
+  txLegacyReplayableCreate, legacyReplayableCreate,
+)
 
 # Top-level builder: choose payload shape based on txType and call the generated build(...) which returns Transaction
 proc Transaction*(

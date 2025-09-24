@@ -2,7 +2,7 @@ import
   std/[strutils, sequtils, options],
   stint,
   ssz_serialization,
-  ./ [signatures, receipts, transaction_builder],
+  ./[signatures, receipts, transaction_builder],
   ./transaction_ssz as ssz_tx,
   ../common/[addresses_rlp, base_rlp],
   ../common/transactions as rlp_tx_mod,
@@ -31,7 +31,7 @@ proc accessTupleFrom(pair: rlp_tx_mod.AccessPair): ssz_tx.AccessTuple =
 proc accessListFrom(al: rlp_tx_mod.AccessList): seq[ssz_tx.AccessTuple] =
   al.map(accessTupleFrom)
 
-proc toAuthList(): seq[ssz_tx. AuthKind] =
+proc toAuthList(): seq[ssz_tx.AuthKind] =
   @[]
 
 proc packSigFromTx(tx: rlp_tx_mod.Transaction): Secp256k1ExecutionSignature =
@@ -46,7 +46,10 @@ proc packSigFromTx(tx: rlp_tx_mod.Transaction): Secp256k1ExecutionSignature =
 proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
   let sig = packSigFromTx(tx)
   let legacyChain: ChainId =
-    if tx.isEip155: tx.chainId else: ChainId(0.u256)
+    if tx.isEip155:
+      tx.chainId
+    else:
+      ChainId(0.u256)
   let accessSSZ = accessListFrom(tx.accessList)
 
   case tx.txType
@@ -60,9 +63,8 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       value = tx.value,
       input = tx.payload,
       max_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.gasPrice)),
-      signature = sig
+      signature = sig,
     )
-
   of rlp_tx_mod.TxEip2930:
     return Transaction(
       txType = ssz_tx.TxAccessList,
@@ -74,9 +76,8 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       input = tx.payload,
       max_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.gasPrice)),
       signature = sig,
-      access_list = accessSSZ
+      access_list = accessSSZ,
     )
-
   of rlp_tx_mod.TxEip1559:
     return Transaction(
       txType = ssz_tx.TxDynamicFee,
@@ -87,11 +88,11 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       value = tx.value,
       input = tx.payload,
       max_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxFeePerGas)),
-      max_priority_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
+      max_priority_fees_per_gas =
+        ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
       signature = sig,
-      access_list = accessSSZ
+      access_list = accessSSZ,
     )
-
   of rlp_tx_mod.TxEip4844:
     return Transaction(
       txType = ssz_tx.TxBlob,
@@ -102,15 +103,14 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       value = tx.value,
       input = tx.payload,
       max_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxFeePerGas)),
-      max_priority_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
+      max_priority_fees_per_gas =
+        ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
       signature = sig,
       access_list = accessSSZ,
       blob_versioned_hashes = tx.versionedHashes,
-      blob_fee = tx.maxFeePerBlobGas
+      blob_fee = tx.maxFeePerBlobGas,
     )
-
   of rlp_tx_mod.TxEip7702:
-
     if tx.to.isNone:
       raise newException(ValueError, "7702 setCode: requires 'to'")
     return Transaction(
@@ -122,15 +122,14 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       value = tx.value,
       input = tx.payload,
       max_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxFeePerGas)),
-      max_priority_fees_per_gas = ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
+      max_priority_fees_per_gas =
+        ssz_tx.BasicFeesPerGas(regular: feeFromGas(tx.maxPriorityFeePerGas)),
       signature = sig,
       access_list = accessSSZ,
       # authorization_list = toAuthList()
       #TODO
-      authorization_list = @[]
-    )
-
- # SSZ -> RLP
+      authorization_list = @[],
+    ) # SSZ -> RLP
 
 proc toOldTx*(tx: ssz_tx.Transaction): rlp_tx_mod.Transaction =
   if tx.kind != RlpTransaction:
@@ -140,204 +139,195 @@ proc toOldTx*(tx: ssz_tx.Transaction): rlp_tx_mod.Transaction =
     result = @[]
     for t in al:
       result.add rlp_tx_mod.AccessPair(
-        address: t.address,
-        storageKeys: t.storage_keys.mapIt(cast[Bytes32](it))
+        address: t.address, storageKeys: t.storage_keys.mapIt(cast[Bytes32](it))
       )
 
   let r = tx.rlp
 
   case r.kind
   of txLegacyReplayableBasic:
-    let p   = r.legacyReplayableBasic.payload
+    let p = r.legacyReplayableBasic.payload
     let sig = r.legacyReplayableBasic.signature
-    let (R,S,y) = secp256k1Unpack (sig)
+    let (R, S, y) = secp256k1Unpack (sig)
     result = rlp_tx_mod.Transaction(
-      txType:   rlp_tx_mod.TxLegacy,
-      chainId:  ChainId(0.u256),
-      nonce:    p.nonce,
+      txType: rlp_tx_mod.TxLegacy,
+      chainId: ChainId(0.u256),
+      nonce: p.nonce,
       gasLimit: p.gas,
-      to:       Opt.some(p.to),
-      value:    p.value,
-      payload:  p.input,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
       gasPrice: toGasInt(p.max_fees_per_gas.regular),
-      V:        27'u64 + uint64(y),
-      R:        R,
-      S:        S,
+      V: 27'u64 + uint64(y),
+      R: R,
+      S: S,
     )
-
   of txLegacyReplayableCreate:
-    let p   = r.legacyReplayableCreate.payload
+    let p = r.legacyReplayableCreate.payload
     let sig = r.legacyReplayableCreate.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:   rlp_tx_mod.TxLegacy,
-      chainId:  ChainId(0.u256),
-      nonce:    p.nonce,
+      txType: rlp_tx_mod.TxLegacy,
+      chainId: ChainId(0.u256),
+      nonce: p.nonce,
       gasLimit: p.gas,
-      to:       Opt.none(Address),
-      value:    p.value,
-      payload:  p.input,
+      to: Opt.none(Address),
+      value: p.value,
+      payload: p.input,
       gasPrice: toGasInt(p.max_fees_per_gas.regular),
-      V:        27'u64 + uint64(y),
-      R:        R,
-      S:        S,
+      V: 27'u64 + uint64(y),
+      R: R,
+      S: S,
     )
-
   of txLegacyBasic:
-    let p   = r.legacyBasic.payload
+    let p = r.legacyBasic.payload
     let sig = r.legacyBasic.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:   rlp_tx_mod.TxLegacy,
-      chainId:  p.chain_id,
-      nonce:    p.nonce,
+      txType: rlp_tx_mod.TxLegacy,
+      chainId: p.chain_id,
+      nonce: p.nonce,
       gasLimit: p.gas,
-      to:       Opt.some(p.to),
-      value:    p.value,
-      payload:  p.input,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
       gasPrice: toGasInt(p.max_fees_per_gas.regular),
       # Similar TODO for typecast
-      V:        rlp_tx_mod.EIP155_CHAIN_ID_OFFSET + ((2 * p.chain_id).limbs[0]) + uint64(y),
-      R:        R,
-      S:        S,
+      V: rlp_tx_mod.EIP155_CHAIN_ID_OFFSET + ((2 * p.chain_id).limbs[0]) + uint64(y),
+      R: R,
+      S: S,
     )
-
   of txLegacyCreate:
-    let p   = r.legacyCreate.payload
+    let p = r.legacyCreate.payload
     let sig = r.legacyCreate.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:   rlp_tx_mod.TxLegacy,
-      chainId:  p.chain_id,
-      nonce:    p.nonce,
+      txType: rlp_tx_mod.TxLegacy,
+      chainId: p.chain_id,
+      nonce: p.nonce,
       gasLimit: p.gas,
-      to:       Opt.none(Address),
-      value:    p.value,
-      payload:  p.input,
+      to: Opt.none(Address),
+      value: p.value,
+      payload: p.input,
       gasPrice: toGasInt(p.max_fees_per_gas.regular),
       # Similar TODO for typecast
-      V:        rlp_tx_mod.EIP155_CHAIN_ID_OFFSET + ((2 * p.chain_id).limbs[0]) + uint64(y),
-      R:        R,
-      S:        S,
+      V: rlp_tx_mod.EIP155_CHAIN_ID_OFFSET + ((2 * p.chain_id).limbs[0]) + uint64(y),
+      R: R,
+      S: S,
     )
-
   of txAccessListBasic:
-    let p   = r.accessListBasic.payload
+    let p = r.accessListBasic.payload
     let sig = r.accessListBasic.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:     rlp_tx_mod.TxEip2930,
-      chainId:    p.chain_id,
-      nonce:      p.nonce,
-      gasLimit:   p.gas,
-      to:         Opt.some(p.to),
-      value:      p.value,
-      payload:    p.input,
-      gasPrice:   toGasInt(p.max_fees_per_gas.regular),
+      txType: rlp_tx_mod.TxEip2930,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
+      gasPrice: toGasInt(p.max_fees_per_gas.regular),
       accessList: toOldAccessList(p.access_list),
-      V:          uint64(y),
-      R:          R,
-      S:          S,
+      V: uint64(y),
+      R: R,
+      S: S,
     )
-
   of txAccessListCreate:
-    let p   = r.accessListCreate.payload
+    let p = r.accessListCreate.payload
     let sig = r.accessListCreate.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:     rlp_tx_mod.TxEip2930,
-      chainId:    p.chain_id,
-      nonce:      p.nonce,
-      gasLimit:   p.gas,
-      to:         Opt.none(Address),
-      value:      p.value,
-      payload:    p.input,
-      gasPrice:  toGasInt(p.max_fees_per_gas.regular),
+      txType: rlp_tx_mod.TxEip2930,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.none(Address),
+      value: p.value,
+      payload: p.input,
+      gasPrice: toGasInt(p.max_fees_per_gas.regular),
       accessList: toOldAccessList(p.access_list),
-      V:          uint64(y),
-      R:          R,
-      S:          S,
+      V: uint64(y),
+      R: R,
+      S: S,
     )
-
   of txBasic:
-    let p   = r.basic.payload
+    let p = r.basic.payload
     let sig = r.basic.signature
-    let (R,S,y) = secp256k1Unpack(sig)
+    let (R, S, y) = secp256k1Unpack(sig)
     result = rlp_tx_mod.Transaction(
-      txType:                 rlp_tx_mod.TxEip1559,
-      chainId:                p.chain_id,
-      nonce:                  p.nonce,
-      gasLimit:               p.gas,
-      to:                     Opt.some(p.to),
-      value:                  p.value,
-      payload:                p.input,
-      maxPriorityFeePerGas:   toGasInt(p.max_priority_fees_per_gas.regular),
-      maxFeePerGas:           toGasInt(p.max_fees_per_gas.regular),
-      accessList:             toOldAccessList(p.access_list),
-      V:                      uint64(y),
-      R:                      R,
-      S:                      S,
-    )
-
-  of txCreate:
-    let p   = r.create.payload
-    let sig = r.create.signature
-    let (R,S,y) = secp256k1Unpack(sig)
-    result = rlp_tx_mod.Transaction(
-      txType:                 rlp_tx_mod.TxEip1559,
-      chainId:                p.chain_id,
-      nonce:                  p.nonce,
-      gasLimit:               p.gas,
-      to:                     Opt.none(Address),
-      value:                  p.value,
-      payload:                p.input,
-      maxPriorityFeePerGas:   toGasInt(p.max_priority_fees_per_gas.regular),
-      maxFeePerGas:           toGasInt(p.max_fees_per_gas.regular),
-      accessList:             toOldAccessList(p.access_list),
-      V:                      uint64(y),
-      R:                      R,
-      S:                      S,
-    )
-
-  of txBlob:
-    let p   = r.blob.payload
-    let sig = r.blob.signature
-    let (R,S,y) = secp256k1Unpack(sig)
-    result = rlp_tx_mod.Transaction(
-      txType:                 rlp_tx_mod.TxEip4844,
-      chainId:                p.chain_id,
-      nonce:                  p.nonce,
-      gasLimit:               p.gas,
-      to:                     Opt.some(p.to),
-      value:                  p.value,
-      payload:                p.input,
-      maxPriorityFeePerGas:   toGasInt(p.max_priority_fees_per_gas.regular),
-      maxFeePerGas:           toGasInt(p.max_fees_per_gas.regular), # BlobFeesPerGas → BasicFeesPerGas.regular
-      maxFeePerBlobGas:       p.max_fees_per_gas.blob,
-      versionedHashes:        p.blob_versioned_hashes,
-      accessList:             toOldAccessList(p.access_list),
-      V:                      uint64(y),
-      R:                      R,
-      S:                      S,
-    )
-
-  of txSetCode:
-    let p   = r.setCode.payload
-    let sig = r.setCode.signature
-    let (R,S,y) = secp256k1Unpack(sig)
-    result = rlp_tx_mod.Transaction(
-      txType:               rlp_tx_mod.TxEip7702,
-      chainId:              p.chain_id,
-      nonce:                p.nonce,
-      gasLimit:             p.gas,
-      to:                   Opt.some(p.to),
-      value:                p.value,
-      payload:              p.input,
+      txType: rlp_tx_mod.TxEip1559,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
       maxPriorityFeePerGas: toGasInt(p.max_priority_fees_per_gas.regular),
-      maxFeePerGas:         toGasInt(p.max_fees_per_gas.regular),
-      accessList:           toOldAccessList(p.access_list),
-      authorizationList:    @[],
-      V:                    uint64(y),
-      R:                    R,
-      S:                    S,
+      maxFeePerGas: toGasInt(p.max_fees_per_gas.regular),
+      accessList: toOldAccessList(p.access_list),
+      V: uint64(y),
+      R: R,
+      S: S,
+    )
+  of txCreate:
+    let p = r.create.payload
+    let sig = r.create.signature
+    let (R, S, y) = secp256k1Unpack(sig)
+    result = rlp_tx_mod.Transaction(
+      txType: rlp_tx_mod.TxEip1559,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.none(Address),
+      value: p.value,
+      payload: p.input,
+      maxPriorityFeePerGas: toGasInt(p.max_priority_fees_per_gas.regular),
+      maxFeePerGas: toGasInt(p.max_fees_per_gas.regular),
+      accessList: toOldAccessList(p.access_list),
+      V: uint64(y),
+      R: R,
+      S: S,
+    )
+  of txBlob:
+    let p = r.blob.payload
+    let sig = r.blob.signature
+    let (R, S, y) = secp256k1Unpack(sig)
+    result = rlp_tx_mod.Transaction(
+      txType: rlp_tx_mod.TxEip4844,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
+      maxPriorityFeePerGas: toGasInt(p.max_priority_fees_per_gas.regular),
+      maxFeePerGas: toGasInt(p.max_fees_per_gas.regular),
+        # BlobFeesPerGas → BasicFeesPerGas.regular
+      maxFeePerBlobGas: p.max_fees_per_gas.blob,
+      versionedHashes: p.blob_versioned_hashes,
+      accessList: toOldAccessList(p.access_list),
+      V: uint64(y),
+      R: R,
+      S: S,
+    )
+  of txSetCode:
+    let p = r.setCode.payload
+    let sig = r.setCode.signature
+    let (R, S, y) = secp256k1Unpack(sig)
+    result = rlp_tx_mod.Transaction(
+      txType: rlp_tx_mod.TxEip7702,
+      chainId: p.chain_id,
+      nonce: p.nonce,
+      gasLimit: p.gas,
+      to: Opt.some(p.to),
+      value: p.value,
+      payload: p.input,
+      maxPriorityFeePerGas: toGasInt(p.max_priority_fees_per_gas.regular),
+      maxFeePerGas: toGasInt(p.max_fees_per_gas.regular),
+      accessList: toOldAccessList(p.access_list),
+      authorizationList: @[],
+      V: uint64(y),
+      R: R,
+      S: S,
     )

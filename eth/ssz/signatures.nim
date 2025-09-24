@@ -57,8 +57,6 @@ proc legacyVFromParity*(yParity: uint8, chainId: SomeInteger, isEip155: bool): u
   else:
     27'u64 + uint64(yParity)
 
-
-
 # ------------------------------------------------------------------------------
 # SSZ-native (EIP-6493-style)
 # ------------------------------------------------------------------------------

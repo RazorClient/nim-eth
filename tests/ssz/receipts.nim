@@ -277,30 +277,36 @@ macro testRT*(name: static[string], expr: typed, body: untyped): untyped =
 
 suite "Block receipts root (SSZ)":
   test "receipts root for 3 receipts: non-zero and stable":
-    let r0 = toReceipt(BasicReceipt(
-      `from`: addresses.zeroAddress,
-      gas_used: 21_000'u64,
-      contract_address: addresses.zeroAddress,
-      logs: @[],
-      status: true,
-    ))
-    let r1 = toReceipt(CreateReceipt(
-      `from`: address"0x0000000000000000000000000000000000000001",
-      gas_used: 42_000'u64,
-      contract_address: address"0x00000000000000000000000000000000000000aa",
-      logs: @[],
-      status: false,
-    ))
-    let r2 = toReceipt(SetCodeReceipt(
-      `from`: address"0x00000000000000000000000000000000000000bb",
-      gas_used: 63_000'u64,
-      contract_address: address"0x00000000000000000000000000000000000000cc",
-      logs: @[],
-      status: true,
-      authorities: @[address"0x00000000000000000000000000000000000000f1"],
-    ))
+    let r0 = toReceipt(
+      BasicReceipt(
+        `from`: addresses.zeroAddress,
+        gas_used: 21_000'u64,
+        contract_address: addresses.zeroAddress,
+        logs: @[],
+        status: true,
+      )
+    )
+    let r1 = toReceipt(
+      CreateReceipt(
+        `from`: address"0x0000000000000000000000000000000000000001",
+        gas_used: 42_000'u64,
+        contract_address: address"0x00000000000000000000000000000000000000aa",
+        logs: @[],
+        status: false,
+      )
+    )
+    let r2 = toReceipt(
+      SetCodeReceipt(
+        `from`: address"0x00000000000000000000000000000000000000bb",
+        gas_used: 63_000'u64,
+        contract_address: address"0x00000000000000000000000000000000000000cc",
+        logs: @[],
+        status: true,
+        authorities: @[address"0x00000000000000000000000000000000000000f1"],
+      )
+    )
 
-    var receipts: seq[Receipt]  = @[r0, r1, r2]
+    var receipts: seq[Receipt] = @[r0, r1, r2]
 
     let root1 = hash_tree_root(receipts)
     check root1 != hashes.zeroHash32

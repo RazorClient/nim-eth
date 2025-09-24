@@ -19,3 +19,4 @@ import
   ./db/all_tests,
   ./common/all_tests,
   ./test_bloom
+  ./ssz/all_tests

@@ -1,7 +1,7 @@
 import
   std/[strutils, sequtils, options],
   stint,
-  ssz_serialization,
+  ssz_serialization[codec,merkleization],
   ./[signatures, receipts, transaction_builder],
   ./transaction_ssz as ssz_tx,
   ../common/[addresses_rlp, base_rlp],

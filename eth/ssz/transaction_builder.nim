@@ -102,7 +102,6 @@ template BuildWrap(
       kind: RlpTransaction, rlp: RlpTransactionObject(kind: tag, fieldSym: inner)
     )
 
-# Register builds for all RLP variants
 BuildWrap(
   RlpLegacyBasicTransactionPayload, RlpLegacyBasicTransaction, txLegacyBasic,
   legacyBasic,
@@ -132,7 +131,6 @@ BuildWrap(
   txLegacyReplayableCreate, legacyReplayableCreate,
 )
 
-# Top-level builder: choose payload shape based on txType and call the generated build(...) which returns Transaction
 proc Transaction*(
     txType: uint8,
     chain_id: ChainId,

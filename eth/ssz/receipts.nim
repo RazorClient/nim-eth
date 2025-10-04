@@ -1,4 +1,7 @@
-import ssz_serialization, ../common/[addresses, base, hashes]
+import
+  ssz_serialization,
+  ./adapter,
+  ../common/[addresses, hashes]
 
 const MAX_TOPICS_PER_LOG* = 4
 
@@ -34,11 +37,11 @@ type
 
   #Run time ->ssz + collections
   ReceiptKind* {.pure.} = enum
-    rBasic
-    rCreate
-    rSetCode
+    rBasic = 0
+    rCreate = 1
+    rSetCode = 2
 
-  Receipt* = object
+  Receipt*  = object
     case kind*: ReceiptKind
     of rBasic: basic*: BasicReceipt
     of rCreate: create*: CreateReceipt

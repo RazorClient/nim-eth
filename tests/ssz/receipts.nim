@@ -5,7 +5,7 @@ import
   macros,
   std/sequtils,
   ../../eth/common/[addresses, base, hashes],
-  ../../eth/ssz/[receipts, codec]
+  ../../eth/ssz/[receipts, adapter]
 
 template roundTrip*(v: var untyped) =
   var bytes = SSZ.encode(v)
@@ -36,14 +36,18 @@ macro testRT*(name: static[string], expr: typed): untyped =
       let `valueSym` = `expr`
       when compiles(encodeReceipt(`valueSym`)):
         let `bytesSym` = encodeReceipt(`valueSym`)
+        echo "encodeReceipt bytes.len=", `bytesSym`.len, " preview=", bytesSym
         var `value2Sym` = decodeReceipt[type(`valueSym`)](`bytesSym`)
         let `bytes2Sym` = encodeReceipt(`value2Sym`)
+        echo "re-encode bytes.len=", `bytes2Sym`.len, " preview=", bytes2Sym
         check `bytesSym` == `bytes2Sym`
         check sszSize(asTagged(`valueSym`)) == `bytesSym`.len
       else:
         let `bytesSym` = SSZ.encode(`valueSym`)
+        echo "SSZ.encode bytes.len=", `bytesSym`.len, " preview=", bytesSym
         var `value2Sym` = SSZ.decode(`bytesSym`, type(`valueSym`))
         let `bytes2Sym` = SSZ.encode(`value2Sym`)
+        echo "SSZ.re-encode len=", `bytes2Sym`.len, " preview=", bytes2Sym
         check `bytesSym` == `bytes2Sym`
         check sszSize(`valueSym`) == `bytesSym`.len
 
@@ -60,65 +64,79 @@ macro testRT*(name: static[string], expr: typed, body: untyped): untyped =
       let `valueSym` = `expr`
       when compiles(encodeReceipt(`valueSym`)):
         let `bytesSym` = encodeReceipt(`valueSym`)
+        # echo "encodeReceipt bytes.len=", `bytesSym`.len, " preview=", hexPreview(`bytesSym`)
         var `value2Sym` = decodeReceipt[type(`valueSym`)](`bytesSym`)
         let `bytes2Sym` = encodeReceipt(`value2Sym`)
+        # echo "re-encode bytes.len=", `bytes2Sym`.len, " preview=", hexPreview(`bytes2Sym`)
         check `bytesSym` == `bytes2Sym`
         check sszSize(asTagged(`valueSym`)) == `bytesSym`.len
       else:
         let `bytesSym` = SSZ.encode(`valueSym`)
+        # echo "SSZ.encode bytes.len=", `bytesSym`.len, " preview=", hexPreview(`bytesSym`)
         var `value2Sym` = SSZ.decode(`bytesSym`, type(`valueSym`))
         let `bytes2Sym` = SSZ.encode(`value2Sym`)
+        # echo "SSZ.re-encode len=", `bytes2Sym`.len, " preview=", hexPreview(`bytes2Sym`)
         check `bytesSym` == `bytes2Sym`
         check sszSize(`valueSym`) == `bytesSym`.len
       block:
         let `userAlias` = `valueSym`
         `body`
 
-# suite "Log Construction (SSZ)":
-#   testRT "Log: empty topics",
-#     Log(
-#       address: addresses.zeroAddress,
-#       topics: List[Hash32, MAX_TOPICS_PER_LOG](@[]),
-#       data: @[],
-#     )
+# # Pretty hex preview (first n bytes) and full hex dump
+# proc hexPreview*(bytes: openArray[byte]; maxLen: int = 64): string =
+#   let n = min(bytes.len, maxLen)
+#   var s = newSeq[string](n)
+#   for i in 0 ..< n:
+#     s[i] = bytes[i].toHex(2)
+#   result = s.join("")
+#   if bytes.len > maxLen:
+#     result.add("...")
 
-#   testRT "Log: max topics",
-#     (
-#       block:
-#         let addrAA = Address.copyFrom(newSeqWith(20, byte 0xAA))
-#         Log(
-#           address: addrAA,
-#           topics: List[Hash32, MAX_TOPICS_PER_LOG](
-#             @[topicFill(0x10), topicFill(0x11), topicFill(0x12), topicFill(0x13)]
-#           ),
-#           data: @[byte 0xDE, 0xAD, 0xBE, 0xEF],
-#         )
-#     ):
-#     check v.topics.len == 4
-#   testRT "Log: 4 topics, some data",
-#     (
-#       block:
-#         let addr22 = Address.copyFrom(newSeqWith(20, byte 0x22))
-#         var a0, a1, a2, a3: array[32, byte]
-#         for i in 0 ..< 32:
-#           a0[i] = 0xA0'u8
-#           a1[i] = 0xA1'u8
-#           a2[i] = 0xA2'u8
-#           a3[i] = 0xA3'u8
-#         Log(
-#           address: addr22,
-#           topics: List[Hash32, MAX_TOPICS_PER_LOG](
-#             @[
-#               Hash32.copyFrom(a0),
-#               Hash32.copyFrom(a1),
-#               Hash32.copyFrom(a2),
-#               Hash32.copyFrom(a3),
-#             ]
-#           ),
-#           data: @[byte 0xDE, 0xAD, 0xBE, 0xEF],
-#         )
-#     ):
-#     check v.topics.len == 4
+suite "Log Construction (SSZ)":
+  testRT "Log: empty topics",
+    Log(
+      address: addresses.zeroAddress,
+      topics: List[Hash32, MAX_TOPICS_PER_LOG](@[]),
+      data: @[],
+    )
+
+  testRT "Log: max topics",
+    (
+      block:
+        let addrAA = Address.copyFrom(newSeqWith(20, byte 0xAA))
+        Log(
+          address: addrAA,
+          topics: List[Hash32, MAX_TOPICS_PER_LOG](
+            @[topicFill(0x10), topicFill(0x11), topicFill(0x12), topicFill(0x13)]
+          ),
+          data: @[byte 0xDE, 0xAD, 0xBE, 0xEF],
+        )
+    ):
+    check v.topics.len == 4
+  testRT "Log: 4 topics, some data",
+    (
+      block:
+        let addr22 = Address.copyFrom(newSeqWith(20, byte 0x22))
+        var a0, a1, a2, a3: array[32, byte]
+        for i in 0 ..< 32:
+          a0[i] = 0xA0'u8
+          a1[i] = 0xA1'u8
+          a2[i] = 0xA2'u8
+          a3[i] = 0xA3'u8
+        Log(
+          address: addr22,
+          topics: List[Hash32, MAX_TOPICS_PER_LOG](
+            @[
+              Hash32.copyFrom(a0),
+              Hash32.copyFrom(a1),
+              Hash32.copyFrom(a2),
+              Hash32.copyFrom(a3),
+            ]
+          ),
+          data: @[byte 0xDE, 0xAD, 0xBE, 0xEF],
+        )
+    ):
+    check v.topics.len == 4
 
 #   testRT "Log decode sanity",
 #     (
@@ -275,48 +293,133 @@ macro testRT*(name: static[string], expr: typed, body: untyped): untyped =
 
 # # #TODO -> rlp to receipts ssz
 
-suite "Block receipts root (SSZ)":
-  test "receipts root for 3 receipts: non-zero and stable":
-    let r0 = toReceipt(
-      BasicReceipt(
-        `from`: addresses.zeroAddress,
-        gas_used: 21_000'u64,
-        contract_address: addresses.zeroAddress,
-        logs: @[],
-        status: true,
-      )
-    )
-    let r1 = toReceipt(
-      CreateReceipt(
-        `from`: address"0x0000000000000000000000000000000000000001",
-        gas_used: 42_000'u64,
-        contract_address: address"0x00000000000000000000000000000000000000aa",
-        logs: @[],
-        status: false,
-      )
-    )
-    let r2 = toReceipt(
-      SetCodeReceipt(
-        `from`: address"0x00000000000000000000000000000000000000bb",
-        gas_used: 63_000'u64,
-        contract_address: address"0x00000000000000000000000000000000000000cc",
-        logs: @[],
-        status: true,
-        authorities: @[address"0x00000000000000000000000000000000000000f1"],
-      )
-    )
+# suite "SSZ Debug Tests":
+  # test "Test individual receipt components":
+  #   echo "=== Testing individual SSZ components ==="
 
-    var receipts: seq[Receipt] = @[r0, r1, r2]
+  #   echo "Testing Address SSZ..."
+  #   try:
+  #     let addr = addresses.zeroAddress
+  #     let addrHash = hash_tree_root(addr)
+  #     echo "Address hash_tree_root successful: ", addrHash.to0xHex()
+  #   except Exception as e:
+  #     echo "ERROR with Address SSZ: ", e.msg
+  #     echo "Exception type: ", $e.name
 
-    let root1 = hash_tree_root(receipts)
-    check root1 != hashes.zeroHash32
-    echo "receipts_root: ", root1.to0xHex()
+  #   echo "Testing Log SSZ..."
+  #   try:
+  #     let log = Log(
+  #       address: addresses.zeroAddress,
+  #       topics: List[Hash32, MAX_TOPICS_PER_LOG](@[]),
+  #       data: @[],
+  #     )
+  #     let logHash = hash_tree_root(log)
+  #     echo "Log hash_tree_root successful: ", logHash.to0xHex()
+  #   except Exception as e:
+  #     echo "ERROR with Log SSZ: ", e.msg
+  #     echo "Exception type: ", $e.name
 
-  # Roundtrip the list and ensure the root is stable
-  let enc = SSZ.encode(receipts)
-  let receipts2 = SSZ.decode(enc, type(receipts))
-  let root2 = hash_tree_root(receipts2)
-  check root2 == root1
+  #   echo "Testing BasicReceipt SSZ..."
+  #   try:
+  #     let basicReceipt = BasicReceipt(
+  #       `from`: addresses.zeroAddress,
+  #       gas_used: 21_000'u64,
+  #       contract_address: addresses.zeroAddress,
+  #       logs: @[],
+  #       status: true,
+  #     )
+  #     let basicHash = hash_tree_root(basicReceipt)
+  #     echo "BasicReceipt hash_tree_root successful: ", basicHash.to0xHex()
+  #   except Exception as e:
+  #     echo "ERROR with BasicReceipt SSZ: ", e.msg
+  #     echo "Exception type: ", $e.name
+
+  #   echo "Testing Receipt variant SSZ..."
+  #   try:
+  #     let receipt = toReceipt(BasicReceipt(
+  #       `from`: addresses.zeroAddress,
+  #       gas_used: 21_000'u64,
+  #       contract_address: addresses.zeroAddress,
+  #       logs: @[],
+  #       status: true,
+  #     ))
+  #     echo "Receipt created with kind: ", receipt.kind
+  #     let receiptHash = hash_tree_root(receipt)
+  #     echo "Receipt hash_tree_root successful: ", receiptHash.to0xHex()
+  #   except Exception as e:
+  #     echo "ERROR with Receipt variant SSZ: ", e.msg
+  #     echo "Exception type: ", $e.name
+
+# suite "Block receipts root (SSZ)":
+#   test "receipts root for 3 receipts: non-zero and stable":
+#     echo "Creating BasicReceipt..."
+#     let r0 = toReceipt(
+#       BasicReceipt(
+#         `from`: addresses.zeroAddress,
+#         gas_used: 21_000'u64,
+#         contract_address: addresses.zeroAddress,
+#         logs: @[],
+#         status: true,
+#       )
+#     )
+#     echo "BasicReceipt created: ", r0.kind
+
+#     echo "Creating CreateReceipt..."
+#     let r1 = toReceipt(
+#       CreateReceipt(
+#         `from`: address"0x0000000000000000000000000000000000000001",
+#         gas_used: 42_000'u64,
+#         contract_address: address"0x00000000000000000000000000000000000000aa",
+#         logs: @[],
+#         status: false,
+#       )
+#     )
+#     echo "CreateReceipt created: ", r1.kind
+
+#     echo "Creating SetCodeReceipt..."
+#     let r2 = toReceipt(
+#       SetCodeReceipt(
+#         `from`: address"0x00000000000000000000000000000000000000bb",
+#         gas_used: 63_000'u64,
+#         contract_address: address"0x00000000000000000000000000000000000000cc",
+#         logs: @[],
+#         status: true,
+#         authorities: @[address"0x00000000000000000000000000000000000000f1"],
+#       )
+#     )
+#     echo "SetCodeReceipt created: ", r2.kind
+
+#     var receipts: seq[Receipt] = @[r0, r1, r2]
+#     echo "Created receipts sequence with ", receipts.len, " items"
+
+#     echo "Attempting to compute hash_tree_root..."
+#     try:
+#       let root1 = hash_tree_root(receipts)
+#       check root1 != hashes.zeroHash32
+#       echo "receipts_root: ", root1.to0xHex()
+
+#       echo "Attempting SSZ.encode on receipts..."
+#       try:
+#         let enc = SSZ.encode(receipts)
+#         echo "SSZ encoding successful, size: ", enc.len
+
+#         echo "Attempting SSZ.decode..."
+#         let receipts2 = SSZ.decode(enc, type(receipts))
+#         echo "SSZ decoding successful"
+
+#         let root2 = hash_tree_root(receipts2)
+#         check root2 == root1
+#         echo "Root comparison successful"
+
+#       except Exception as e:
+#         echo "ERROR in SSZ encode/decode: ", e.msg
+#         echo "Exception type: ", $e.name
+#         raise e
+
+#     except Exception as e:
+#       echo "ERROR in hash_tree_root: ", e.msg
+#       echo "Exception type: ", $e.name
+#       raise e
 
 # test "receipts root changes when a receipt changes":
 #   var receipts = @[

@@ -5,6 +5,7 @@ type TxBuildError* = object of ValueError
 template fail(msg: string): untyped =
   raise newException(TxBuildError, msg)
 
+
 #This should be placed in nimbus-eth1
 # template validateCommonFields(
 #     payload: untyped,
@@ -145,7 +146,7 @@ proc Transaction*(
     access_list: seq[AccessTuple] = @[],
     blob_versioned_hashes: seq[VersionedHash] = @[],
     blob_fee: FeePerGas = 0.u256,
-    authorization_list: seq[RlpAuthorization] = @[],
+  authorization_list: seq[transaction_ssz.Authorization] = @[],
 ): Transaction =
   case txType
   of TxLegacy:
@@ -291,3 +292,4 @@ proc Transaction*(
     return build(p, signature)
   else:
     fail("Unsupported txType (expected 0x00..0x04)")
+

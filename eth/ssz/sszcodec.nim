@@ -1,7 +1,7 @@
 import
   std/[strutils, sequtils, options],
   stint,
-  ssz_serialization[codec,merkleization],
+  ssz_serialization/merkleization,
   ./[signatures, receipts, transaction_builder],
   ./transaction_ssz as ssz_tx,
   ../common/[addresses_rlp, base_rlp],
@@ -31,7 +31,7 @@ proc accessTupleFrom(pair: rlp_tx_mod.AccessPair): ssz_tx.AccessTuple =
 proc accessListFrom(al: rlp_tx_mod.AccessList): seq[ssz_tx.AccessTuple] =
   al.map(accessTupleFrom)
 
-proc toAuthList(): seq[ssz_tx.AuthKind] =
+proc toAuthList(): seq[ssz_tx.Authorization] =
   @[]
 
 proc packSigFromTx(tx: rlp_tx_mod.Transaction): Secp256k1ExecutionSignature =

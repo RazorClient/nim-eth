@@ -138,28 +138,14 @@ type RlpBlobTransactionPayload* {.sszActiveFields: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1
   blob_versioned_hashes*: seq[VersionedHash]
 
 type
-  RlpReplayableBasicAuthorizationPayload* = object
-    magic*: TransactionType
-    address*: Address
+  # EIP-7702 authorization blob carried inside SetCode txs
+  Authorization* = object
+    chain_id*: ChainId     # 0 means replayable
+    signer*: Address       # address authorizing the code change
     nonce*: uint64
-
-  RlpBasicAuthorizationPayload* = object
-    magic*: TransactionType
-    chain_id*: ChainId
-    address*: Address
-    nonce*: uint64
-
-type
-  AuthKind* {.pure.} = enum
-    ReplayableBasic
-    Basic
-
-  RlpAuthorization* = object
-    case kind*: AuthKind
-    of ReplayableBasic:
-      replayable*: RlpReplayableBasicAuthorizationPayload
-    of Basic:
-      basic*: RlpBasicAuthorizationPayload
+    v*: uint8              # legacy-style V (27/28 or 0/1 depending on convension)
+    r*: UInt256
+    s*: UInt256
 
 type RlpSetCodeTransactionPayload* {.
   sszActiveFields: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -174,7 +160,7 @@ type RlpSetCodeTransactionPayload* {.
   input*: ProgressiveByteList
   access_list*: seq[AccessTuple]
   max_priority_fees_per_gas*: BasicFeesPerGas
-  authorization_list*: seq[RlpAuthorization]
+  authorization_list*: seq[Authorization]
 
 type
   RlpLegacyReplayableBasicTransaction* =
@@ -244,3 +230,49 @@ type
       discard
     of RlpTransaction:
       rlp*: RlpTransactionObject
+import macros
+
+
+macro init*(T: typedesc; discr: untyped): untyped =
+
+  let rhs = discr[1]
+  let tname = $T
+
+  if tname == "Transaction":
+    result = quote do:
+      Transaction(kind: `rhs`, rlp: default(RlpTransactionObject))
+  elif tname == "RlpTransactionObject":
+    result = quote do:
+      case `rhs`
+      of txLegacyReplayableBasic:
+        RlpTransactionObject(kind: `rhs`,
+          legacyReplayableBasic: default(RlpLegacyReplayableBasicTransaction))
+      of txLegacyReplayableCreate:
+        RlpTransactionObject(kind: `rhs`,
+          legacyReplayableCreate: default(RlpLegacyReplayableCreateTransaction))
+      of txLegacyBasic:
+        RlpTransactionObject(kind: `rhs`,
+          legacyBasic: default(RlpLegacyBasicTransaction))
+      of txLegacyCreate:
+        RlpTransactionObject(kind: `rhs`,
+          legacyCreate: default(RlpLegacyCreateTransaction))
+      of txAccessListBasic:
+        RlpTransactionObject(kind: `rhs`,
+          accessListBasic: default(RlpAccessListBasicTransaction))
+      of txAccessListCreate:
+        RlpTransactionObject(kind: `rhs`,
+          accessListCreate: default(RlpAccessListCreateTransaction))
+      of txBasic:
+        RlpTransactionObject(kind: `rhs`,
+          basic: default(RlpBasicTransaction))
+      of txCreate:
+        RlpTransactionObject(kind: `rhs`,
+          create: default(RlpCreateTransaction))
+      of txBlob:
+        RlpTransactionObject(kind: `rhs`,
+          blob: default(RlpBlobTransaction))
+      of txSetCode:
+        RlpTransactionObject(kind: `rhs`,
+          setCode: default(RlpSetCodeTransaction))
+  else:
+    error("Unsupported type for init: " & tname)

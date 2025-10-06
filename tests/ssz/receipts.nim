@@ -378,29 +378,30 @@ macro testRT*(name: static[string], expr: typed, body: untyped): untyped =
 #     let root1 = hash_tree_root(receipts)
     # check root1 != hashes.zeroHash32
     # echo "receipts_root: ", root1.to(Hash32).to0xHex()
+
     # let root2 = hash_tree_root(receipts2)
     # check root2 == root1
 
-# test "receipts root changes when a receipt changes":
-#   var receipts = @[BasicReceipt(`from`: default(Address), gas_used: 1'u64, contract_address: default(Address), logs: @[], status: true),
-#   BasicReceipt(`from`: default(Address), gas_used: 2'u64, contract_address: default(Address), logs: @[], status: true)
-#   ]
-#   let rootA = hash_tree_root(receipts)
-#   # mutate gas_used in first receipt
-#   receipts[0].basic.gas_used = 3'u64
-#   let rootB = hash_tree_root(receipts)
-#   check rootA != rootB
+test "receipts root changes when a receipt changes":
+  var receipts = @[BasicReceipt(`from`: default(Address), gas_used: 1'u64, contract_address: default(Address), logs: @[], status: true),
+  BasicReceipt(`from`: default(Address), gas_used: 2'u64, contract_address: default(Address), logs: @[], status: true)
+  ]
+  let rootA = hash_tree_root(receipts)
+  # mutate gas_used in first receipt
+  receipts[0].gas_used = 3'u64
+  let rootB = hash_tree_root(receipts)
+  check rootA != rootB
 
-# test "receipts root is order-sensitive":
-#   let a = toReceipt(BasicReceipt(`from`: default(Address), gas_used: 1'u64, contract_address: default(Address), logs: @[], status: true))
-#   let b = toReceipt(BasicReceipt(`from`: default(Address), gas_used: 2'u64, contract_address: default(Address), logs: @[], status: true))
-#   let list1 = @[a, b]
-#   let list2 = @[b, a]
-#   let r1 = hash_tree_root(list1)
-#   let r2 = hash_tree_root(list2)
-#   check r1 != r2
-#   echo "receipts_root(list1): ", r1.to(Hash32).to0xHex()
-#   echo "receipts_root(list2): ", r2.to(Hash32).to0xHex()
+test "receipts root is order-sensitive":
+  let a = BasicReceipt(`from`: default(Address), gas_used: 1'u64, contract_address: default(Address), logs: @[], status: true)
+  let b = BasicReceipt(`from`: default(Address), gas_used: 2'u64, contract_address: default(Address), logs: @[], status: true)
+  let list1 = @[a, b]
+  let list2 = @[b, a]
+  let r1 = hash_tree_root(list1)
+  let r2 = hash_tree_root(list2)
+  check r1 != r2
+  echo "receipts_root(list1): ", r1.to(Hash32).to0xHex()
+  echo "receipts_root(list2): ", r2.to(Hash32).to0xHex()
 
 suite "SSZ root ":
   test "hash_tree_root for Log":
@@ -413,45 +414,44 @@ suite "SSZ root ":
     echo "Log root: ", root.to(Hash32).to0xHex()
 
 
-  # test "hash_tree_root for receipts list (variant)":
-  #   # Build concrete receipts and convert to the Receipt variant using toReceipt
-  #   let r0 = toReceipt(BasicReceipt(
-  #     `from`: addresses.zeroAddress,
-  #     gas_used: 21_000'u64,
-  #     contract_address: addresses.zeroAddress,
-  #     logs: @[],
-  #     status: true
-  #   ))
-  #   let r1 = toReceipt(BasicReceipt(
-  #     `from`: address"0x0000000000000000000000000000000000000001",
-  #     gas_used: 42_000'u64,
-  #     contract_address: address"0x00000000000000000000000000000000000000aa",
-  #     logs: @[],
-  #     status: false
-  #   ))
-  #   let r2 = toReceipt(BasicReceipt(
-  #     `from`: address"0x00000000000000000000000000000000000000bb",
-  #     gas_used: 63_000'u64,
-  #     contract_address: address"0x00000000000000000000000000000000000000cc",
-  #     logs: @[],
-  #     status: true
-  #   ))
+  test "hash_tree_root for receipts list (variant)":
+    let r0 = toReceipt(BasicReceipt(
+      `from`: addresses.zeroAddress,
+      gas_used: 21_000'u64,
+      contract_address: addresses.zeroAddress,
+      logs: @[],
+      status: true
+    ))
+    let r1 = toReceipt(BasicReceipt(
+      `from`: address"0x0000000000000000000000000000000000000001",
+      gas_used: 42_000'u64,
+      contract_address: address"0x00000000000000000000000000000000000000aa",
+      logs: @[],
+      status: false
+    ))
+    let r2 = toReceipt(BasicReceipt(
+      `from`: address"0x00000000000000000000000000000000000000bb",
+      gas_used: 63_000'u64,
+      contract_address: address"0x00000000000000000000000000000000000000cc",
+      logs: @[],
+      status: true
+    ))
 
-    # hash_tree_root(r1)
-    # let receipts: seq[Receipt] = @[r0, r1, r2]
-    # let root = hash_tree_root(receipts)
-    # echo "Tagged receipts list root: ", root.to(Hash32).to0xHex()
+    hash_tree_root(r1)
+    let receipts: seq[Receipt] = @[r0, r1, r2]
+    let root = hash_tree_root(receipts)
+    echo "Tagged receipts list root: ", root.to(Hash32).to0xHex()
 
-#   test "hash_tree_root for list of Log":
-#     let log = Log(
-#       address: addresses.zeroAddress,
-#       topics: List[Hash32, MAX_TOPICS_PER_LOG](@[]),
-#       data: @[]
-#     )
-#     let logs = @[log]
-#     let root = hash_tree_root(logs)
-#     # echo "Logs list root: ", root.to0xHex()
-#     echo "Logs list root: ", root.to(Hash32).to0xHex()
+  test "hash_tree_root for list of Log":
+    let log = Log(
+      address: addresses.zeroAddress,
+      topics: List[Hash32, MAX_TOPICS_PER_LOG](@[]),
+      data: @[]
+    )
+    let logs = @[log]
+    let root = hash_tree_root(logs)
+    # echo "Logs list root: ", root.to0xHex()
+    echo "Logs list root: ", root.to(Hash32).to0xHex()
 
   test "hash_tree_root for BasicReceipt":
     let r = BasicReceipt(
@@ -489,68 +489,68 @@ suite "SSZ root ":
   #   let root = hash_tree_root(r)
   #   echo "SetCodeReceipt root: ", root.to(Hash32).to0xHex()
 
-#   test "hash_tree_root for treceipts list (variant)":
-#     # Build concrete receipts and convert to the Receipt variant using toReceipt
-#     let r0 = BasicReceipt(
-#       `from`: addresses.zeroAddress,
-#       gas_used: 21_000'u64,
-#       contract_address: addresses.zeroAddress,
-#       logs: @[],
-#       status: true
-#     )
-#     let r1 = BasicReceipt(
-#     `from`: addresses.zeroAddress,
-#     gas_used: 21_000'u64,
-#     contract_address: addresses.zeroAddress,
-#     logs: @[],
-#     status: true
-#     )
-#     let r2 = BasicReceipt(
-#     `from`: addresses.zeroAddress,
-#     gas_used: 21_000'u64,
-#     contract_address: addresses.zeroAddress,
-#     logs: @[],
-#     status: true
-#     )
-#   # let r1 = toReceipt(CreateReceipt(
-#   #   `from`: address"0x0000000000000000000000000000000000000001",
-#   #   gas_used: 42_000'u64,
-#   #   contract_address: address"0x00000000000000000000000000000000000000aa",
-#   #   logs: @[],
-#   #   status: false
-#   # ))
-#   # let r2 = toReceipt(SetCodeReceipt(
-#   #   `from`: address"0x00000000000000000000000000000000000000bb",
-#   #   gas_used: 63_000'u64,
-#   #   contract_address: address"0x00000000000000000000000000000000000000cc",
-#   #   logs: @[],
-#   #   status: true,
-#   #   authorities: @[address"0x00000000000000000000000000000000000000f1"]
-#   # ))
-# # TODO make so we can tkae an arbitary amount of receipts with different kind
-    # var receipts = @[r0, r1,  r2]
-    # let root = hash_tree_root(receipts)
-    # echo "Tagged receipts list root: ", root.to(Hash32).to0xHex()
-
-# Focused tests to demonstrate current toReceipt SSZ behavior
-suite "Receipt variant SSZ behavior":
-  proc sampleBasic(): BasicReceipt =
-    BasicReceipt(
+  test "hash_tree_root for treceipts list (variant)":
+    # Build concrete receipts and convert to the Receipt variant using toReceipt
+    let r0 = BasicReceipt(
       `from`: addresses.zeroAddress,
       gas_used: 21_000'u64,
       contract_address: addresses.zeroAddress,
       logs: @[],
       status: true
     )
+    let r1 = BasicReceipt(
+    `from`: addresses.zeroAddress,
+    gas_used: 21_000'u64,
+    contract_address: addresses.zeroAddress,
+    logs: @[],
+    status: true
+    )
+    let r2 = BasicReceipt(
+    `from`: addresses.zeroAddress,
+    gas_used: 21_000'u64,
+    contract_address: addresses.zeroAddress,
+    logs: @[],
+    status: true
+    )
+  let r1 = toReceipt(CreateReceipt(
+    `from`: address"0x0000000000000000000000000000000000000001",
+    gas_used: 42_000'u64,
+    contract_address: address"0x00000000000000000000000000000000000000aa",
+    logs: @[],
+    status: false
+  ))
+  let r2 = toReceipt(SetCodeReceipt(
+    `from`: address"0x00000000000000000000000000000000000000bb",
+    gas_used: 63_000'u64,
+    contract_address: address"0x00000000000000000000000000000000000000cc",
+    logs: @[],
+    status: true,
+    authorities: @[address"0x00000000000000000000000000000000000000f1"]
+  ))
+# TODO make so we can tkae an arbitary amount of receipts with different kind
+    var receipts = @[r0, r1,  r2]
+    let root = hash_tree_root(receipts)
+    echo "Tagged receipts list root: ", root.to(Hash32).to0xHex()
 
-  proc sampleVariant(): Receipt =
-    toReceipt(sampleBasic())
+# Focused tests to demonstrate current toReceipt SSZ behavior
+# suite "Receipt variant SSZ behavior":
+#   proc sampleBasic(): BasicReceipt =
+#     BasicReceipt(
+#       `from`: addresses.zeroAddress,
+#       gas_used: 21_000'u64,
+#       contract_address: addresses.zeroAddress,
+#       logs: @[],
+#       status: true
+#     )
 
-  test "SSZ.encode on BasicReceipt succeeds":
-    let r = sampleBasic()
-    let bytes = SSZ.encode(r)
-    let r2 = SSZ.decode(bytes, BasicReceipt)
-    check r == r2
+#   proc sampleVariant(): Receipt =
+#     toReceipt(sampleBasic())
+
+#   test "SSZ.encode on BasicReceipt succeeds":
+#     let r = sampleBasic()
+#     let bytes = SSZ.encode(r)
+#     let r2 = SSZ.decode(bytes, BasicReceipt)
+#     check r == r2
 
   # test "SSZ.encode on Receipt (toReceipt) currently unsupported":
   #   let rv = sampleVariant()

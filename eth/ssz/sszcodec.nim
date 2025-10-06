@@ -21,6 +21,14 @@ proc toGasInt(x: ssz_tx.FeePerGas): rlp_tx_mod.GasInt =
   # TODO:verify with etan+advaita(advaita say sanity check one is ok)
   rlp_tx_mod.GasInt(x.limbs[0])
 
+ # Normalize any legacy V into 0/1
+func vToParity(v: uint8): uint8 =
+  ## If 27/28, map to 0/1. Otherwise pass 0/1 through.
+  if v == 27'u8: 0'u8
+  elif v == 28'u8: 1'u8
+  else: v and 1'u8
+
+
 proc accessTupleFrom(pair: rlp_tx_mod.AccessPair): ssz_tx.AccessTuple =
   # Old storageKeys: seq[Bytes32]; new  seq[Hash32].( bruh )
   result.address = pair.address
@@ -129,7 +137,7 @@ proc toSszTx*(tx: rlp_tx_mod.Transaction): ssz_tx.Transaction =
       # authorization_list = toAuthList()
       #TODO
       authorization_list = @[],
-    ) # SSZ -> RLP
+    )
 
 proc toOldTx*(tx: ssz_tx.Transaction): rlp_tx_mod.Transaction =
   if tx.kind != RlpTransaction:

@@ -75,16 +75,3 @@ suite "Transactions SSZ Roundtrip":
 #   sszRoundTripOK("EIP-4844 CALL (with blob fee)",   eip4844Call(10, true))
 #   sszRoundTripOK("EIP-4844 CALL (blob fee zero)",   eip4844Call(11, false))
 #   sszRoundTripOK("EIP-7702 setCode (empty auths)",  eip7702SetCode(12, false))
-
-# suite "sszcodec: edge/failing paths":
-#   sszRoundTripExpectError("4844 CREATE not supported",           block:
-#     var t = eip4844Call(20); t.to = noneTo(); t, ValueError)
-
-#   sszRoundTripExpectError("Legacy CREATE empty initcode",         legacyCreatePre155(21, false), ValueError)
-#   sszRoundTripExpectError("Legacy155 CREATE empty initcode",      legacyCreate155(22, false),     ValueError)
-#   sszRoundTripExpectError("2930 CREATE empty initcode",           eip2930Create(23, false),       ValueError)
-#   sszRoundTripExpectError("1559 CREATE empty initcode",           eip1559Create(24, false),       ValueError)
-
-#   sszRoundTripMismatch("7702 non-empty authorization_list may lose per-auth signatures",
-#     eip7702SetCode(25, true),
-#     "SSZ payloads typically omit per-authorization signatures; lists should differ")

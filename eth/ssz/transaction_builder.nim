@@ -103,34 +103,16 @@ template BuildWrap(
       kind: RlpTransaction, rlp: RlpTransactionObject(kind: tag, fieldSym: inner)
     )
 
-BuildWrap(
-  RlpLegacyBasicTransactionPayload, RlpLegacyBasicTransaction, txLegacyBasic,
-  legacyBasic,
-)
-BuildWrap(
-  RlpLegacyCreateTransactionPayload, RlpLegacyCreateTransaction, txLegacyCreate,
-  legacyCreate,
-)
-BuildWrap(
-  RlpAccessListBasicTransactionPayload, RlpAccessListBasicTransaction,
-  txAccessListBasic, accessListBasic,
-)
-BuildWrap(
-  RlpAccessListCreateTransactionPayload, RlpAccessListCreateTransaction,
-  txAccessListCreate, accessListCreate,
-)
+BuildWrap( RlpLegacyBasicTransactionPayload, RlpLegacyBasicTransaction, txLegacyBasic, legacyBasic)
+BuildWrap( RlpLegacyCreateTransactionPayload, RlpLegacyCreateTransaction, txLegacyCreate, legacyCreate)
+BuildWrap(RlpAccessListBasicTransactionPayload, RlpAccessListBasicTransaction, txAccessListBasic, accessListBasic,)
+BuildWrap(RlpAccessListCreateTransactionPayload, RlpAccessListCreateTransaction, txAccessListCreate, accessListCreate,)
 BuildWrap(RlpBasicTransactionPayload, RlpBasicTransaction, txBasic, basic)
 BuildWrap(RlpCreateTransactionPayload, RlpCreateTransaction, txCreate, create)
 BuildWrap(RlpBlobTransactionPayload, RlpBlobTransaction, txBlob, blob)
 BuildWrap(RlpSetCodeTransactionPayload, RlpSetCodeTransaction, txSetCode, setCode)
-BuildWrap(
-  RlpLegacyReplayableBasicTransactionPayload, RlpLegacyReplayableBasicTransaction,
-  txLegacyReplayableBasic, legacyReplayableBasic,
-)
-BuildWrap(
-  RlpLegacyReplayableCreateTransactionPayload, RlpLegacyReplayableCreateTransaction,
-  txLegacyReplayableCreate, legacyReplayableCreate,
-)
+BuildWrap(RlpLegacyReplayableBasicTransactionPayload, RlpLegacyReplayableBasicTransaction, txLegacyReplayableBasic, legacyReplayableBasic)
+BuildWrap(RlpLegacyReplayableCreateTransactionPayload, RlpLegacyReplayableCreateTransaction, txLegacyReplayableCreate, legacyReplayableCreate)
 
 proc Transaction*(
     txType: uint8,
@@ -276,6 +258,15 @@ proc Transaction*(
       fail("7702 setCode: requires 'to'")
     if authorization_list.len == 0:
       fail("7702 setCode: authorization_list must be non-empty")
+    # Minimal validation: ensure auth magic is set correctly.
+    for i, a in authorization_list:
+      case a.kind
+      of transaction_ssz.AuthorizationKind.authReplayableBasic:
+        if a.replayable.magic != transaction_ssz.AuthMagic7702:
+          fail("7702 setCode: auth[" & $i & "] replayable.magic must be 0x05")
+      of transaction_ssz.AuthorizationKind.authBasic:
+        if a.basic.magic != transaction_ssz.AuthMagic7702:
+          fail("7702 setCode: auth[" & $i & "] basic.magic must be 0x05")
     let p = RlpSetCodeTransactionPayload(
       txType: TxSetCode,
       chain_id: chain_id,

@@ -2,6 +2,7 @@ import ssz_serialization
 import stint
 import ../common/[addresses, base, hashes]
 import ./signatures
+import   serialization/case_objects
 
 type SignedTx*[P] = object
   payload*: P
@@ -138,14 +139,32 @@ type RlpBlobTransactionPayload* {.sszActiveFields: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1
   blob_versioned_hashes*: seq[VersionedHash]
 
 type
-  # EIP-7702 authorization blob carried inside SetCode txs
-  Authorization* = object
-    chain_id*: ChainId     # 0 means replayable
-    signer*: Address       # address authorizing the code change
+  # EIP-7702 authorization payloads carried inside SetCode txs
+  RlpReplayableBasicAuthorizationPayload* {.
+    sszActiveFields: [1, 0, 1, 1]
+  .} = object
+    magic*: TransactionType   # 0x05 (Auth)
+    address*: Address         # ExecutionAddress
     nonce*: uint64
-    v*: uint8              # legacy-style V (27/28 or 0/1 depending on convension)
-    r*: UInt256
-    s*: UInt256
+
+  RlpBasicAuthorizationPayload* {.
+    sszActiveFields: [1, 1, 1, 1]
+  .} = object
+    magic*: TransactionType   # 0x05 (Auth)
+    chain_id*: ChainId
+    address*: Address         # ExecutionAddress
+    nonce*: uint64
+
+  AuthorizationKind*  = enum
+    authReplayableBasic
+    authBasic
+
+  Authorization* = object
+    case kind*: AuthorizationKind
+    of authReplayableBasic:
+      replayable*: RlpReplayableBasicAuthorizationPayload
+    of authBasic:
+      basic*: RlpBasicAuthorizationPayload
 
 type RlpSetCodeTransactionPayload* {.
   sszActiveFields: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -184,19 +203,19 @@ type
   #   RlpCreateTransaction | RlpBlobTransaction | RlpSetCodeTransaction
 
 type
-  RLPTransactionKind* {.pure.} = enum
-    txLegacyReplayableBasic
-    txLegacyReplayableCreate
-    txLegacyBasic
-    txLegacyCreate
-    txAccessListBasic
-    txAccessListCreate
-    txBasic
-    txCreate
-    txBlob
-    txSetCode
+  RLPTransactionKind*  = enum
+    txLegacyReplayableBasic=0
+    txLegacyReplayableCreate=1
+    txLegacyBasic=2
+    txLegacyCreate=3
+    txAccessListBasic=4
+    txAccessListCreate=5
+    txBasic=6
+    txCreate=7
+    txBlob=8
+    txSetCode=9
 
-  RlpTransactionObject* = object
+  RlpTransactionObject*  = object
     case kind*: RLPTransactionKind
     of txLegacyReplayableBasic:
       legacyReplayableBasic*: RlpLegacyReplayableBasicTransaction
@@ -221,8 +240,8 @@ type
 
 type
   TransactionKind* {.pure.} = enum
-    TxNone
-    RlpTransaction
+    TxNone=0
+    RlpTransaction=1
 
   Transaction* = object
     case kind*: TransactionKind
@@ -230,49 +249,3 @@ type
       discard
     of RlpTransaction:
       rlp*: RlpTransactionObject
-import macros
-
-
-macro init*(T: typedesc; discr: untyped): untyped =
-
-  let rhs = discr[1]
-  let tname = $T
-
-  if tname == "Transaction":
-    result = quote do:
-      Transaction(kind: `rhs`, rlp: default(RlpTransactionObject))
-  elif tname == "RlpTransactionObject":
-    result = quote do:
-      case `rhs`
-      of txLegacyReplayableBasic:
-        RlpTransactionObject(kind: `rhs`,
-          legacyReplayableBasic: default(RlpLegacyReplayableBasicTransaction))
-      of txLegacyReplayableCreate:
-        RlpTransactionObject(kind: `rhs`,
-          legacyReplayableCreate: default(RlpLegacyReplayableCreateTransaction))
-      of txLegacyBasic:
-        RlpTransactionObject(kind: `rhs`,
-          legacyBasic: default(RlpLegacyBasicTransaction))
-      of txLegacyCreate:
-        RlpTransactionObject(kind: `rhs`,
-          legacyCreate: default(RlpLegacyCreateTransaction))
-      of txAccessListBasic:
-        RlpTransactionObject(kind: `rhs`,
-          accessListBasic: default(RlpAccessListBasicTransaction))
-      of txAccessListCreate:
-        RlpTransactionObject(kind: `rhs`,
-          accessListCreate: default(RlpAccessListCreateTransaction))
-      of txBasic:
-        RlpTransactionObject(kind: `rhs`,
-          basic: default(RlpBasicTransaction))
-      of txCreate:
-        RlpTransactionObject(kind: `rhs`,
-          create: default(RlpCreateTransaction))
-      of txBlob:
-        RlpTransactionObject(kind: `rhs`,
-          blob: default(RlpBlobTransaction))
-      of txSetCode:
-        RlpTransactionObject(kind: `rhs`,
-          setCode: default(RlpSetCodeTransaction))
-  else:
-    error("Unsupported type for init: " & tname)

@@ -2,7 +2,10 @@ import ssz_serialization
 import stint
 import ../common/[addresses, base, hashes]
 import ./signatures
+import ./adapter
 import   serialization/case_objects
+
+export adapter
 
 type SignedTx*[P] = object
   payload*: P
@@ -139,7 +142,6 @@ type RlpBlobTransactionPayload* {.sszActiveFields: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1
   blob_versioned_hashes*: seq[VersionedHash]
 
 type
-  # EIP-7702 authorization payloads carried inside SetCode txs
   RlpReplayableBasicAuthorizationPayload* {.
     sszActiveFields: [1, 0, 1, 1]
   .} = object

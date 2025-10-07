@@ -23,7 +23,6 @@ proc toGasInt(x: ssz_tx.FeePerGas): rlp_tx_mod.GasInt =
 
  # Normalize any legacy V into 0/1
 func vToParity(v: uint8): uint8 =
-  ## If 27/28, map to 0/1. Otherwise pass 0/1 through.
   if v == 27'u8: 0'u8
   elif v == 28'u8: 1'u8
   else: v and 1'u8
@@ -39,8 +38,70 @@ proc accessTupleFrom(pair: rlp_tx_mod.AccessPair): ssz_tx.AccessTuple =
 proc accessListFrom(al: rlp_tx_mod.AccessList): seq[ssz_tx.AccessTuple] =
   al.map(accessTupleFrom)
 
-proc toAuthList(): seq[ssz_tx.Authorization] =
-  @[]
+proc ensureAuthMagic(m: TransactionType) =
+  if m != AuthMagic7702:
+    raise newException(ValueError, "authorization.magic must be 0x05")
+
+
+proc toSszSignedAuthList*(al: seq[rlp_tx_mod.Authorization]):
+                          seq[ssz_tx.SignedTx[ssz_tx.Authorization]] =
+  result = newSeq[ssz_tx.SignedTx[ssz_tx.Authorization]](al.len)
+  for i, a in al:
+    let payload =
+      if a.chainId == ChainId(0.u256):
+        ssz_tx.Authorization(
+          kind: authReplayableBasic,
+          replayable: ssz_tx.RlpReplayableBasicAuthorizationPayload(
+            magic: AuthMagic7702,
+            address: a.address,
+            nonce:   uint64(a.nonce),
+          )
+        )
+      else:
+        ssz_tx.Authorization(
+          kind: authBasic,
+          basic: ssz_tx.RlpBasicAuthorizationPayload(
+            magic:    AuthMagic7702,
+            chain_id: a.chainId,
+            address:  a.address,
+            nonce:    uint64(a.nonce),
+          )
+        )
+
+    let sig = secp256k1Pack(a.R, a.S, vToParity(a.yParity))
+    result[i] = ssz_tx.SignedTx[ssz_tx.Authorization](payload: payload, signature: sig)
+
+# sszcodec.nim
+proc toRlpAuthList*(al: seq[ssz_tx.SignedTx[ssz_tx.Authorization]]):
+                    seq[rlp_tx_mod.Authorization] =
+  result = newSeq[rlp_tx_mod.Authorization](al.len)
+  for i, sa in al:
+    let (R, S, parity) = secp256k1Unpack(sa.signature)
+    case sa.payload.kind
+    of authReplayableBasic:
+      let p = sa.payload.replayable
+      ensureAuthMagic(p.magic)
+      result[i] = rlp_tx_mod.Authorization(
+        chainId:  ChainId(0.u256),
+        address:  p.address,
+        nonce:    AccountNonce(p.nonce),
+        yParity:  parity,
+        r:        R,
+        s:        S,
+      )
+    of authBasic:
+      let p = sa.payload.basic
+      ensureAuthMagic(p.magic)
+      result[i] = rlp_tx_mod.Authorization(
+        chainId:  p.chain_id,
+        address:  p.address,
+        nonce:    AccountNonce(p.nonce),
+        yParity:  parity,
+        r:        R,
+        s:        S,
+      )
+
+
 
 proc packSigFromTx(tx: rlp_tx_mod.Transaction): Secp256k1ExecutionSignature =
   let y: uint8 =

@@ -9,8 +9,6 @@ import
   ../../eth/common/[addresses, base, hashes],
   ../../eth/ssz/[transaction_ssz, transaction_builder, signatures, adapter]
 
-export adapter
-
 const
   recipient = address"095e7baea6a6c7c4c2dfeb977efac326af552d87"
   source = address"0x0000000000000000000000000000000000000001"
@@ -62,25 +60,25 @@ macro txRT*(name: static[string], expr: typed, body: untyped): untyped =
         let `d` = `v2`
         `body`
 
-# suite "SSZ Transactions (round-trip)":
-#   txRT "SSZ: Legacy Call",
-#     Transaction(
-#       txType = 0x00'u8,
-#       chain_id = ChainId(1.u256),
-#       nonce = 1'u64,
-#       gas = 21_000'u64,
-#       to = Opt.some(recipient),
-#       value = 0.u256,
-#       input = abcdef,
-#       max_fees_per_gas = BasicFeesPerGas(regular: 2.u256),
-#       signature = dummySig(),
-#     ):
-#     check d.rlp.legacyBasic.payload.txType == 0x00'u8
-#     check d.rlp.legacyBasic.payload.to == t.rlp.legacyBasic.payload.to
-#     check d.rlp.legacyBasic.payload.nonce == t.rlp.legacyBasic.payload.nonce
-#     check d.rlp.legacyBasic.payload.gas == t.rlp.legacyBasic.payload.gas
-#     check d.rlp.legacyBasic.payload.input == t.rlp.legacyBasic.payload.input
-#     check d.rlp.legacyBasic.signature == t.rlp.legacyBasic.signature
+suite "SSZ Transactions (round-trip)":
+  txRT "SSZ: Legacy Call",
+    Transaction(
+      txType = 0x00'u8,
+      chain_id = ChainId(1.u256),
+      nonce = 1'u64,
+      gas = 21_000'u64,
+      to = Opt.some(recipient),
+      value = 0.u256,
+      input = abcdef,
+      max_fees_per_gas = BasicFeesPerGas(regular: 2.u256),
+      signature = dummySig(),
+    ):
+    check d.rlp.legacyBasic.payload.txType == 0x00'u8
+    check d.rlp.legacyBasic.payload.to == t.rlp.legacyBasic.payload.to
+    check d.rlp.legacyBasic.payload.nonce == t.rlp.legacyBasic.payload.nonce
+    check d.rlp.legacyBasic.payload.gas == t.rlp.legacyBasic.payload.gas
+    check d.rlp.legacyBasic.payload.input == t.rlp.legacyBasic.payload.input
+    check d.rlp.legacyBasic.signature == t.rlp.legacyBasic.signature
 
   # txRT "SSZ: Legacy Create",
   #   Transaction(
@@ -258,7 +256,7 @@ macro txRT*(name: static[string], expr: typed, body: untyped): untyped =
 
 suite "Block transactions root (SSZ sanity)":
   test "transactions root for 3 txs: non-zero and stable":
-    let t0 = Transaction(
+    var t0 = Transaction(
       txType = 0x00'u8,
       chain_id = ChainId(1.u256),
       nonce = 1'u64,
@@ -269,12 +267,10 @@ suite "Block transactions root (SSZ sanity)":
       max_fees_per_gas = BasicFeesPerGas(regular: 2.u256),
       signature = dummySig(),
     )
-    let t1 = t0
-    let t2 = t0
-    let txs = @[t0, t1, t2]
-
-    let root1 = hash_tree_root(txs)
-    discard root1
+    var t1 = t0
+    var t2 = t0
+    var txn = @[t0, t1, t2]
+    let root1 = hash_tree_root(txn)
 
 # Failing
 # suite "SSZ: Authorization list":

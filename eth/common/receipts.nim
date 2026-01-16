@@ -54,6 +54,8 @@ type
     cumulativeGasUsed*: GasInt
     logs*             : seq[Log]
     eip7807ReceiptType*: Eip7807ReceiptType
+    origin*           : Address
+    contactAddress*   : Address
     authorities*      : seq[Address]
     # https://github.com/ethereum/EIPs/blob/676604927b316a44195008e632778d4ca1101deb/EIPS/eip-6466.md?plain=1#L138
     txGasUsed*        : uint64 # Gas used by THIS transaction only
@@ -64,6 +66,7 @@ const
   Eip1559Receipt* = TxEip1559
   Eip4844Receipt* = TxEip4844
   Eip7702Receipt* = TxEip7702
+  Eip7807Receipt* = TxEip7807
 
 func hasStatus*(rec: Receipt): bool {.inline.} =
   rec.isHash == false

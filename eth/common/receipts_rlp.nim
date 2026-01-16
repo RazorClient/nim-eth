@@ -29,13 +29,6 @@ proc append*(w: var RlpWriter, rec: Receipt) =
 
 # RLP encoding for StoredReceipt (eth/69)
 proc append*(w: var RlpWriter, rec: StoredReceipt) =
-  let tailLen =
-    if rec.receiptType == Eip7807Receipt:
-      case rec.eip7807ReceiptType
-      of Eip7807Basic:   3        # subtype, origin, txGasUsed
-      of Eip7807Create:  4        # + contractAddress
-      of Eip7807SetCode: 4        # + authorities
-    else: 0
   w.startList(4)
   w.append(rec.receiptType.uint)
   if rec.isHash:
@@ -111,20 +104,6 @@ proc readReceiptTyped(rlp: var Rlp, receipt: var Receipt) {.raises: [RlpError].}
   rlp.read(receipt.logsBloom)
   rlp.read(receipt.logs)
 
-  if rec.receiptType == Eip7807Receipt:
-    let st = rlp.read(uint)
-    if not checkedEnumAssign(rec.eip7807ReceiptType, st):
-      raise newException(UnsupportedRlpError, "Bad Eip7807ReceiptType: " & $st)
-    rlp.read(rec.origin)
-    rlp.read(rec.txGasUsed)
-    case rec.eip7807ReceiptType
-    of Eip7807Create:  rlp.read(rec.contactAddress)
-    of Eip7807SetCode: rlp.read(rec.authorities)
-    of Eip7807Basic:   discard
-
-    if rlp.hasData:
-      raise newException(MalformedRlpError, "Trailing fields in StoredReceipt")
-
 # Decode eth/69 StoredReceipt
 proc read*(rlp: var Rlp, T: type StoredReceipt): StoredReceipt {.raises: [RlpError].} =
   var rec: StoredReceipt
@@ -145,6 +124,20 @@ proc read*(rlp: var Rlp, T: type StoredReceipt): StoredReceipt {.raises: [RlpErr
 
   rlp.read(rec.cumulativeGasUsed)
   rlp.read(rec.logs)
+
+  if rec.receiptType == Eip7807Receipt:
+    let st = rlp.read(uint)
+    if not checkedEnumAssign(rec.eip7807ReceiptType, st):
+      raise newException(UnsupportedRlpError, "Bad Eip7807ReceiptType: " & $st)
+    rlp.read(rec.origin)
+    rlp.read(rec.txGasUsed)
+    case rec.eip7807ReceiptType
+    of Eip7807Create:  rlp.read(rec.contactAddress)
+    of Eip7807SetCode: rlp.read(rec.authorities)
+    of Eip7807Basic:   discard
+
+    if rlp.hasData:
+      raise newException(MalformedRlpError, "Trailing fields in StoredReceipt")
 
   rec
 

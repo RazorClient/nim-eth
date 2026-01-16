@@ -1,14 +1,12 @@
-# eth
-# Copyright (c) 2024-2025 Status Research & Development GmbH
+# Copyright (c) 2024-2026 Status Research & Development GmbH
 # Licensed and distributed under either of
 #   * MIT license (license terms in the root directory or at https://opensource.org/licenses/MIT).
 #   * Apache v2 license (license terms in the root directory or at https://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  ssz_serialization,
-  ../common/[addresses, hashes],
-  ./adapter
+import ssz_serialization, ../common/[addresses, hashes], ./adapter, ./common_ssz
+
+export common_ssz
 
 const
   ReceiptTagBasic* = 0x01'u8
@@ -28,28 +26,26 @@ type
     rkSetCode
 
   BasicReceipt* {.sszActiveFields: [1, 1, 0, 1, 1].} = object
-    fromAddress*: Address
-    gasUsed*: GasAmount
-    contractAddress*: Address # inactive field to preserve SSZ shape
+    `from`*: Address
+    gas_used*: GasAmount
     logs*: seq[Log]
     status*: bool
 
   CreateReceipt* {.sszActiveFields: [1, 1, 1, 1, 1].} = object
-    fromAddress*: Address
-    gasUsed*: GasAmount
-    contractAddress*: Address
+    `from`*: Address
+    gas_used*: GasAmount
+    contract_address*: Address
     logs*: seq[Log]
     status*: bool
 
   SetCodeReceipt* {.sszActiveFields: [1, 1, 0, 1, 1, 1].} = object
-    fromAddress*: Address
-    gasUsed*: GasAmount
-    contractAddress*: Address # inactive field to preserve SSZ shape
+    `from`*: Address
+    gas_used*: GasAmount
     logs*: seq[Log]
     status*: bool
     authorities*: seq[Address]
 
-  ReceiptPayload* = object
+  Receipt* = object
     case kind*: ReceiptKind
     of rkBasic:
       basic*: BasicReceipt
@@ -57,5 +53,3 @@ type
       create*: CreateReceipt
     of rkSetCode:
       setCode*: SetCodeReceipt
-
-  Receipt* = ReceiptPayload

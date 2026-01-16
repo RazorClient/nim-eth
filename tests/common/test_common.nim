@@ -219,4 +219,8 @@ suite "EIP-2718 transaction / receipt":
     check legacyReceipt == legacyStoredReceipt.to(Receipt)
     check typedReceipt == typedStoredReceipt.to(Receipt)
 
+  test "TxEip7807 rejects RLP encoding":
+    let tx = Transaction(txType: TxEip7807)
+    expect UnsupportedRlpError:
+      discard rlp.encode(tx)
 

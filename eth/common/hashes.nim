@@ -16,6 +16,7 @@
 
 import std/[typetraits, hashes], ../keccak/keccak, ./base, stew/assign2
 import nimcrypto/keccak as slow_keccak
+import ssz_serialization/[codec, merkleization]
 
 export hashes, keccak.update, keccak.finish
 

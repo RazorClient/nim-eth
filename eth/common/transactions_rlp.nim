@@ -7,14 +7,19 @@
 
 {.push raises: [].}
 
-import 
-  "."/[addresses_rlp, base_rlp, hashes_rlp, transactions], 
+import
+  "."/[addresses_rlp, base_rlp, hashes_rlp, transactions],
   ../rlp,
   ../rlp/[length_writer, two_pass_writer, hash_writer]
 
 from stew/objects import checkedEnumAssign
 
 export addresses_rlp, base_rlp, hashes_rlp, transactions, rlp
+
+proc ensureRlpCapable(txType: TxType) {.raises: [UnsupportedRlpError].} =
+  # TxEip7807 is SSZ-only;
+  if txType == TxEip7807:
+    raise newException(UnsupportedRlpError, "TxEip7807 must be encoded with SSZ, not RLP")
 
 proc appendTxLegacy(w: var RlpWriter, tx: Transaction) =
   w.startList(9)
@@ -99,7 +104,8 @@ proc appendTxEip7702(w: var RlpWriter, tx: Transaction) =
   w.append(tx.R)
   w.append(tx.S)
 
-proc appendTxPayload(w: var RlpWriter, tx: Transaction) =
+proc appendTxPayload(w: var RlpWriter, tx: Transaction) {.raises: [UnsupportedRlpError].} =
+  ensureRlpCapable(tx.txType)
   case tx.txType
   of TxLegacy:
     w.appendTxLegacy(tx)
@@ -111,8 +117,11 @@ proc appendTxPayload(w: var RlpWriter, tx: Transaction) =
     w.appendTxEip4844(tx)
   of TxEip7702:
     w.appendTxEip7702(tx)
+  else:
+    raise newException(UnsupportedRlpError, "Unsupported transaction type for RLP encoding")
 
-proc append*(w: var RlpWriter, tx: Transaction) =
+proc append*(w: var RlpWriter, tx: Transaction) {.raises: [UnsupportedRlpError].} =
+  ensureRlpCapable(tx.txType)
   if tx.txType != TxLegacy:
     # since the tx type is encoded outside the transaction type its encoding
     # cannot be considered a part of the rlp list that encodes the type. Hence
@@ -195,9 +204,10 @@ proc rlpEncodeEip7702(w: var RlpWriter, tx: Transaction) =
   w.append(tx.accessList)
   w.append(tx.authorizationList)
 
-proc encodeUnsignedTransaction*(w: var RlpWriter, tx: Transaction, eip155: bool) =
+proc encodeUnsignedTransaction*(w: var RlpWriter, tx: Transaction, eip155: bool){.raises: [UnsupportedRlpError].} =
   ## Encode transaction data in preparation for signing or signature checking.
   ## For signature checking, set `eip155 = tx.isEip155`
+  ensureRlpCapable(tx.txType)
   case tx.txType
   of TxLegacy:
     if eip155: w.rlpEncodeEip155(tx) else: w.rlpEncodeLegacy(tx)
@@ -209,8 +219,10 @@ proc encodeUnsignedTransaction*(w: var RlpWriter, tx: Transaction, eip155: bool)
     w.rlpEncodeEip4844(tx)
   of TxEip7702:
     w.rlpEncodeEip7702(tx)
+  else:
+    raise newException(UnsupportedRlpError, "Unsupported transaction type for RLP encoding")
 
-proc encodeForSigning*(tx: Transaction, eip155: bool): seq[byte] =
+proc encodeForSigning*(tx: Transaction, eip155: bool): seq[byte] {.raises: [UnsupportedRlpError].} =
   ## Encode transaction data in preparation for signing or signature checking.
   ## For signature checking, set `eip155 = tx.isEip155`
   var tracker: DynamicRlpLengthTracker
@@ -223,7 +235,7 @@ proc encodeForSigning*(tx: Transaction, eip155: bool): seq[byte] =
 template rlpEncode*(tx: Transaction): seq[byte] {.deprecated.} =
   encodeForSigning(tx, tx.isEip155())
 
-func rlpHashForSigning*(tx: Transaction, eip155: bool): Hash32 =
+func rlpHashForSigning*(tx: Transaction, eip155: bool): Hash32 {.raises: [UnsupportedRlpError].} =
   var tracker: DynamicRlpLengthTracker
   tracker.initLengthTracker()
   tracker.encodeUnsignedTransaction(tx, eip155)
@@ -403,6 +415,8 @@ proc readTxPayload(
     rlp.readTxEip4844(tx)
   of TxEip7702:
     rlp.readTxEip7702(tx)
+  of TxEip7807:
+    raise newException(UnsupportedRlpError, "TxEip7807 has no RLP decoding; use SSZ")
 
 proc readTxTyped(rlp: var Rlp, tx: var Transaction) {.raises: [RlpError].} =
   let txType = rlp.readTxType()
@@ -446,10 +460,11 @@ proc read*(
       rr.readTxTyped(tx)
     result.add tx
 
-proc append*(rlpWriter: var RlpWriter, txs: seq[Transaction] | openArray[Transaction]) =
+proc append*(rlpWriter: var RlpWriter, txs: seq[Transaction] | openArray[Transaction]) {.raises: [UnsupportedRlpError].} =
   # See above about encoding arrays/sequences of transactions.
   rlpWriter.startList(txs.len)
   for tx in txs:
+    ensureRlpCapable(tx.txType)
     if tx.txType == TxLegacy:
       rlpWriter.append(tx)
     else:

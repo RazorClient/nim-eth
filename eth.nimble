@@ -21,7 +21,8 @@ requires "nim >= 2.0.10",
          "unittest2",
          "results",
          "minilru",
-         "snappy"
+         "snappy",
+         "ssz_serialization"
 
 let nimc = getEnv("NIMC", "nim") # Which nim compiler to use
 let lang = getEnv("NIMLANG", "c") # Which backend (c/cpp/js)
@@ -63,6 +64,9 @@ task test_utp, "Run utp tests":
 
 task test_common, "Run common tests":
   run "tests/common/all_tests", "common"
+
+task test_ssz, "Run SSZ tests":
+  run "tests/ssz/all_tests", "ssz_suite"
 
 task test, "Run all tests":
   run "tests/test_bloom", ""

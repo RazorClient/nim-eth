@@ -7,7 +7,7 @@
 
 {.push raises: [].}
 
-import 
+import
   ./[addresses, base, hashes, transactions],
   ../bloom
 
@@ -30,6 +30,12 @@ type
     # Eip1559Receipt = TxEip1559
     # Eip4844Receipt = TxEip4844
     # Eip7702Receipt = TxEip7702
+    # Eip7807Receipt = TxEip7807
+
+  Eip7807ReceiptType* = enum
+    Eip7807Create
+    Eip7807Basic
+    Eip7807SetCode
 
   Receipt* = object
     receiptType*      : ReceiptType
@@ -47,6 +53,10 @@ type
     hash*             : Hash32
     cumulativeGasUsed*: GasInt
     logs*             : seq[Log]
+    eip7807ReceiptType*: Eip7807ReceiptType
+    authorities*      : seq[Address]
+    # https://github.com/ethereum/EIPs/blob/676604927b316a44195008e632778d4ca1101deb/EIPS/eip-6466.md?plain=1#L138
+    txGasUsed*        : uint64 # Gas used by THIS transaction only
 
 const
   LegacyReceipt*  = TxLegacy
@@ -81,7 +91,12 @@ func to*(rec: Receipt, _: type StoredReceipt): StoredReceipt =
     status            : rec.status,
     hash              : rec.hash,
     cumulativeGasUsed : rec.cumulativeGasUsed,
-    logs              : rec.logs
+    logs              : rec.logs,
+    # Eip7807 fields defaulted as of now
+    authorities       : @[],
+    txGasUsed         : 0'u64,
+    contactAddress    : default(Address), # default address
+    origin            : default(Address)  # default address
   )
 
 func to*(rec: StoredReceipt, _: type Receipt): Receipt =
